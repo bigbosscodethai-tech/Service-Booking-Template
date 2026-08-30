@@ -1,0 +1,11 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    { "name": "VITE_LIFF_ID", "description": "LINE LIFF app ID for the customer booking UI", "requiredAtBoot": false },
+    { "name": "LINE_CHANNEL_ACCESS_TOKEN", "description": "LINE Messaging API channel access token", "requiredAtBoot": false },
+    { "name": "VAPID_PUBLIC_KEY", "description": "Web push VAPID public key", "requiredAtBoot": false },
+    { "name": "VAPID_PRIVATE_KEY", "description": "Web push VAPID private key", "requiredAtBoot": false }
+  ]
+}
