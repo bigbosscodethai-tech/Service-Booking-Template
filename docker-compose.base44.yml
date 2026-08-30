@@ -1,0 +1,92 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: service_booking
+      POSTGRES_USER: service_booking
+      POSTGRES_PASSWORD: service_booking
+    volumes:
+      - service_booking_postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U service_booking -d service_booking"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: golang:1.25-alpine
+    working_dir: /workspace/apps/api
+    volumes:
+      - .:/workspace
+      - service_booking_go_cache:/go/pkg/mod
+    env_file:
+      - ./.env.base44-defaults
+      - /run/base44/app.env
+    environment:
+      APP_ENV: development
+      HTTP_PORT: 8080
+      PORT: 8080
+      DATABASE_URL: postgres://service_booking:service_booking@postgres:5432/service_booking?sslmode=disable
+      REDIS_ADDR: redis:6379
+      REDIS_DB: 0
+      PUBLIC_WEB_URL: https://3000-${BASE44_PUBLIC_HOST_SUFFIX}
+      ADMIN_WEB_URL: https://3001-${BASE44_PUBLIC_HOST_SUFFIX}
+      ADMIN_DISPLAY_NAME: Service Booking Admin
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: admin1234
+      BOOKING_SLOT_CAPACITY: 3
+      CORS_ALLOWED_ORIGINS: https://3000-${BASE44_PUBLIC_HOST_SUFFIX},https://3001-${BASE44_PUBLIC_HOST_SUFFIX}
+    command: sh -c "go run ./cmd/api"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  customer:
+    image: node:24-alpine
+    working_dir: /workspace/apps/customer
+    volumes:
+      - .:/workspace
+      - service_booking_customer_node_modules:/workspace/apps/customer/node_modules
+    env_file:
+      - ./.env.base44-defaults
+      - /run/base44/app.env
+    environment:
+      VITE_API_BASE_URL: https://8080-${BASE44_PUBLIC_HOST_SUFFIX}/api/v1
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    ports:
+      - "3000:5173"
+    depends_on:
+      - api
+
+  admin:
+    image: node:24-alpine
+    working_dir: /workspace/apps/admin
+    volumes:
+      - .:/workspace
+      - service_booking_admin_node_modules:/workspace/apps/admin/node_modules
+    environment:
+      VITE_API_BASE_URL: https://8080-${BASE44_PUBLIC_HOST_SUFFIX}/api/v1
+      VITE_WS_BASE_URL: wss://8080-${BASE44_PUBLIC_HOST_SUFFIX}/api/v1
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5174"
+    ports:
+      - "3001:5174"
+    depends_on:
+      - api
+
+volumes:
+  service_booking_postgres:
+  service_booking_go_cache:
+  service_booking_customer_node_modules:
+  service_booking_admin_node_modules:

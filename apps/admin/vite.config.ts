@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5174,
+    host: true,
+    allowedHosts: true,
   },
   preview: {
     allowedHosts: ['service-booking-template-admin-production.up.railway.app'],
